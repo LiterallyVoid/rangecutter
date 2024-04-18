@@ -23,19 +23,21 @@ where
 }
 
 pub trait RangeExt {
-    /// Concatenate `self` and `after`, panicking if `after` doesn't immediately follow `self`.
+    /// Concatenate `self` and `other`, panicking if `other` doesn't immediately follow `self`.
     ///
     /// ```rust
     /// # use rangecutter::RangeExt;
-    /// assert_eq!((0..3).concat(3..4), 0..4);
+    /// assert_eq!((0..3).concat(&(3..4)), 0..4);
     ///
     /// let arr = [0, 1, 2, 3, 4];
     ///
     /// assert_eq!([0, 1, 2      ], arr[0..3]);
     /// assert_eq!([         3   ], arr[3..4]);
-    /// assert_eq!([0, 1, 2, 3   ], arr[(0..3).concat(3..4)]);
+    /// assert_eq!([0, 1, 2, 3   ], arr[(0..3).concat(&(3..4))]);
     /// ```
-    fn concat(self, after: Self) -> Self;
+    fn concat(&self, other: &Self) -> Self
+    where
+        Self: Clone;
 
     /// Remove `prefix` from `self`, panicking if it isn't a prefix of `self`.
     ///
@@ -120,12 +122,12 @@ pub trait RangeExt {
 
 impl<T> RangeExt for Range<T>
 where
-    T: std::cmp::PartialOrd + std::cmp::PartialEq,
+    T: std::cmp::PartialOrd + std::cmp::PartialEq + Clone,
 {
-    fn concat(self, after: Self) -> Self {
-        assert!(self.end == after.start);
+    fn concat(&self, other: &Self) -> Self {
+        assert!(self.end == other.start);
 
-        self.start..after.end
+        self.start.clone()..other.end.clone()
     }
 
     fn remove_prefix(self, prefix: Self) -> Self {
