@@ -12,9 +12,9 @@ where
     T: PartialOrd + Clone,
 {
     fn cut(&self, middle: &Self) -> (Self, Self) {
-        assert!(self.contains(&middle.start));
+        assert!(self.contains_or_ends_at(&middle.start));
         assert!(self.contains_or_ends_at(&middle.end));
-        assert!(middle.start < middle.end);
+        assert!(middle.start <= middle.end);
 
         assert!(self.start <= middle.start);
 
