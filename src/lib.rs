@@ -1,4 +1,4 @@
-//! Tools for working with adjacent ranges.
+//! Utilities for working with adjacent ranges.
 //!
 //! ```rust
 //! use std::ops::Range;
@@ -47,6 +47,8 @@
 //! # Limitations
 //!
 //! Only fully-bounded inclusive ranges (`Range<T>`) are supported.
+
+#![forbid(unsafe_code)]
 
 use std::ops::Range;
 
