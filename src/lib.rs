@@ -1,3 +1,4 @@
+//! Tools for working with adjacent ranges.
 //!
 //! # Limitations
 //!
@@ -90,7 +91,7 @@ pub trait RangeExt {
     ///     [   1, 2      ],
     /// );
     /// ```
-    fn cut<C>(self, middle: &C) -> (Self, Self)
+    fn cut<C>(&self, middle: &C) -> (Self, Self)
     where
         Self: Sized,
         Self: cut::RangeCut<C>,
