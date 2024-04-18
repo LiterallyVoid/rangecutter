@@ -1,5 +1,7 @@
 //!
+//! # Limitations
 //!
+//! Only fully-bounded inclusive ranges (`Range<T>`) are supported.
 
 use std::ops::Range;
 
@@ -127,13 +129,13 @@ where
 
     fn remove_prefix(self, prefix: Self) -> Self {
         assert!(prefix.start == self.start);
-        assert!(prefix.end <= self.end);
+        assert!(self.contains_or_ends_at(&prefix.end));
 
         prefix.end..self.end
     }
 
     fn remove_suffix(self, suffix: Self) -> Self {
-        assert!(self.start <= suffix.start);
+        assert!(self.contains(&suffix.start));
         assert!(self.end == suffix.end);
 
         self.start..suffix.start
