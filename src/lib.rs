@@ -1,15 +1,45 @@
-use std::ops::Range;
+use std::ops::{Range, RangeFrom, RangeInclusive, RangeTo, RangeToInclusive};
 
-pub trait RangeCompose<Rhs> {
-    /// Calculate the range such that indexing by the new range has the same result as indexing by `self` and then `rhs`.
-    fn compose(&self, rhs: &Rhs) -> Rhs;
+trait RangeStart<T> {}
+trait RangeEnd<T> {}
+
+impl RangeStart<usize> for usize {}
+impl<T> RangeStart<T> for Range<T> {}
+impl<T> RangeStart<T> for RangeInclusive<T> {}
+impl<T> RangeStart<T> for RangeFrom<T> {}
+
+impl RangeEnd<usize> for usize {}
+impl<T> RangeEnd<T> for Range<T> {}
+impl<T> RangeEnd<T> for RangeInclusive<T> {}
+impl<T> RangeEnd<T> for RangeTo<T> {}
+impl<T> RangeEnd<T> for RangeToInclusive<T> {}
+
+trait RangeContainsExt<T> {
+    fn contains_or_ends_at(&self, index: &T) -> bool;
+}
+
+impl<T> RangeContainsExt<T> for Range<T>
+where
+    T: PartialOrd,
+{
+    fn contains_or_ends_at(&self, index: &T) -> bool {
+        index <= &self.end
+    }
+}
+
+trait RangeCompose<Rhs> {
+    type Output;
+
+    fn compose(&self, rhs: &Rhs) -> Self::Output;
 }
 
 impl<T> RangeCompose<Range<T>> for Range<T>
 where
     T: std::cmp::PartialOrd + std::ops::Add<T, Output = T> + Clone,
 {
-    fn compose(&self, rhs: &Range<T>) -> Range<T> {
+    type Output = Range<T>;
+
+    fn compose(&self, rhs: &Range<T>) -> Self::Output {
         assert!(self.start.clone() <= self.start.clone() + rhs.start.clone());
         assert!((self.start.clone() + rhs.end.clone()) <= self.end.clone());
 
@@ -17,44 +47,11 @@ where
     }
 }
 
-pub trait RangeCut<Cut> {
-    /// Split the range into the section before `middle` starts and the section that starts where `middle` ends.
-    /// Panics if `middle` contains any elements not in `self`.
-    ///
-    /// ```rust
-    /// assert_eq((0..5).cut(2), (0..2, 2..5));
-    /// ```
-    ///
-    /// ```rust
-    /// assert_eq((0..5).cut(1..3), (0..1, 3..5));
-    ///
-    /// let arr = [0, 1, 2, 3, 4];
-    ///
-    /// let middle = 1..3;
-    /// let (before, after) = arr.cut(middle);
-    ///
-    /// assert_eq!(
-    ///     arr[before]
-    ///         .into_iter()
-    ///         .chain(arr[after].into_iter())
-    ///         .collect::<Vec<_>>(),
-    ///     [0,       3, 4],
-    /// );
-    ///
-    /// assert_eq!(
-    ///     arr[middle],
-    ///     [   1, 2      ],
-    /// );
-    /// ```
-    fn cut(self, middle: Cut) -> (Self, Self)
-    where
-        Self: Sized;
-}
-
-pub trait RangeAdjacent {
+pub trait RangeExt {
     /// Concatenate `self` and `after`, panicking if `after` doesn't immediately follow `self`.
     ///
     /// ```rust
+    /// # use rangecutter::RangeExt;
     /// assert_eq!((0..3).concat(3..4), 0..4);
     ///
     /// let arr = [0, 1, 2, 3, 4];
@@ -63,11 +60,17 @@ pub trait RangeAdjacent {
     /// assert_eq!([         3   ], arr[3..4]);
     /// assert_eq!([0, 1, 2, 3   ], arr[(0..3).concat(3..4)]);
     /// ```
+    ///
+    /// ```should_panic
+    /// # use rangecutter::RangeExt;
+    /// println!("{:?}", (0..1).concat(3..4));
+    /// ```
     fn concat(self, after: Self) -> Self;
 
-    /// Remove `prefix` from `self`, panicking if `prefix` isn't a prefix of `self`.
+    /// Remove `prefix` from `self`, panicking if it isn't a prefix of `self`.
     ///
     /// ```rust
+    /// # use rangecutter::RangeExt;
     /// assert_eq!((0..5).remove_prefix(0..1), 1..5);
     ///
     /// let arr = [0, 1, 2];
@@ -78,9 +81,10 @@ pub trait RangeAdjacent {
     /// ```
     fn remove_prefix(self, prefix: Self) -> Self;
 
-    /// Remove `suffix` from `self`, panicking if `suffix` isn't a suffix of `self`.
+    /// Remove `suffix` from `self`, panicking if it isn't a suffix of `self`.
     ///
     /// ```rust
+    /// # use rangecutter::RangeExt;
     /// assert_eq!((0..5).remove_suffix(3..5), 0..3);
     ///
     /// let arr = [0, 1, 2];
@@ -90,9 +94,61 @@ pub trait RangeAdjacent {
     /// assert_eq!([0, 1   ], arr[(0..3).remove_suffix(2..3)]);
     /// ```
     fn remove_suffix(self, suffix: Self) -> Self;
+
+    /// Split the range into the section before `middle` starts, and the section that starts where `middle` ends.
+    /// Panics if `middle` contains any elements not in `self`.
+    ///
+    /// ```rust
+    /// # use rangecutter::RangeExt;
+    /// assert_eq!((0..5).cut(&(1..3)), (0..1, 3..5));
+    ///
+    /// let arr = [0, 1, 2, 3, 4];
+    ///
+    /// let middle = 1..3;
+    /// let (before, after) = (0..5).cut(&middle);
+    ///
+    /// assert_eq!(
+    ///     arr[before]
+    ///         .into_iter()
+    ///         .chain(arr[after].into_iter())
+    ///         .copied()
+    ///         .collect::<Vec<_>>(),
+    ///     [0,       3, 4],
+    /// );
+    ///
+    /// assert_eq!(
+    ///     arr[middle],
+    ///     [   1, 2      ],
+    /// );
+    /// ```
+    fn cut<C>(self, middle: &C) -> (Self, Self)
+    where
+        Self: Sized,
+        Self: range_cut::RangeCut<C>,
+    {
+        range_cut::RangeCut::cut(self, middle)
+    }
+
+    /// Calculate the range such that indexing by the new range has the same result as indexing by `self` and then `rhs`.
+    ///
+    /// ```rust
+    /// # use rangecutter::RangeExt;
+    /// let arr = [0, 1, 2, 3, 4];
+    ///
+    /// let outer = 2..4;
+    /// let inner = 1..2;
+    ///
+    /// assert_eq!(arr[outer.compose(&inner)], arr[outer][inner]);
+    /// ```
+    fn compose<Rhs, Output>(&self, rhs: &Rhs) -> Output
+    where
+        Self: RangeCompose<Rhs, Output = Output>,
+    {
+        RangeCompose::compose(self, rhs)
+    }
 }
 
-impl<T> RangeAdjacent for Range<T>
+impl<T> RangeExt for Range<T>
 where
     T: std::cmp::PartialOrd + std::cmp::PartialEq,
 {
@@ -117,20 +173,46 @@ where
     }
 }
 
-impl<T> RangeCut<Range<T>> for Range<T>
-where
-    T: std::cmp::PartialOrd + std::cmp::PartialEq,
-{
-    fn cut(self, middle: Self) -> (Self, Self) {
-        assert!(self.start <= middle.start);
-        assert!(middle.end <= self.end);
+mod range_cut {
+    use super::RangeContainsExt;
+    use std::ops::Range;
 
-        (self.start..middle.start, middle.end..self.end)
+    pub trait RangeCut<Cut> {
+        fn cut(self, middle: &Cut) -> (Self, Self)
+        where
+            Self: Sized;
+    }
+
+    impl<T> RangeCut<Range<T>> for Range<T>
+    where
+        T: PartialOrd + Clone,
+    {
+        fn cut(self, middle: &Self) -> (Self, Self) {
+            assert!(self.contains(&middle.start));
+            assert!(self.contains_or_ends_at(&middle.end));
+            assert!(middle.start < middle.end);
+
+            assert!(self.start <= middle.start);
+
+            (
+                self.start..middle.start.clone(),
+                middle.end.clone()..self.end,
+            )
+        }
     }
 }
 
-pub trait RangeExt<T>: RangeAdjacent + RangeCompose<T> + RangeCut<T> {}
-impl<T> RangeExt<T> for T where T: RangeAdjacent + RangeCompose<T> + RangeCut<T> {}
+// impl<T> RangeCut<T> for Range<T>
+// where
+//     T: std::cmp::PartialOrd,
+// {
+//     fn cut(self, middle: T) -> (Self, Self) {
+//         assert!(self.contains(&middle));
+//         assert!(self.contains_or_ends_at(&middle));
+
+//         (self.start..middle, middle..self.end)
+//     }
+// }
 
 /// TODO: remove
 pub fn add(left: usize, right: usize) -> usize {
