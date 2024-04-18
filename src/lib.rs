@@ -167,6 +167,9 @@ pub trait RangeExt {
 impl<T> RangeExt for Range<T>
 where
     T: std::cmp::PartialOrd + std::cmp::PartialEq + Clone,
+
+    // Not required at the moment, but I don't want to have to break compatibility later to print the relevant values while panicking.
+    T: std::fmt::Debug,
 {
     fn concat(&self, other: &Self) -> Self {
         assert!(self.end == other.start);
