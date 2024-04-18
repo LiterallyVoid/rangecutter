@@ -5,6 +5,7 @@ description = "Utilities for working with adjacent ranges"
 tags = ["range"]
 categories = ["rust-patterns"]
 
+repository = "https://github.com/literallyvoid/rangecutter"
 license = "MIT"
 
 version = "0.1.0"
