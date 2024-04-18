@@ -1,19 +1,5 @@
 use std::ops::{Range, RangeFrom, RangeInclusive, RangeTo, RangeToInclusive};
 
-trait RangeStart<T> {}
-trait RangeEnd<T> {}
-
-impl RangeStart<usize> for usize {}
-impl<T> RangeStart<T> for Range<T> {}
-impl<T> RangeStart<T> for RangeInclusive<T> {}
-impl<T> RangeStart<T> for RangeFrom<T> {}
-
-impl RangeEnd<usize> for usize {}
-impl<T> RangeEnd<T> for Range<T> {}
-impl<T> RangeEnd<T> for RangeInclusive<T> {}
-impl<T> RangeEnd<T> for RangeTo<T> {}
-impl<T> RangeEnd<T> for RangeToInclusive<T> {}
-
 trait RangeContainsExt<T> {
     fn contains_or_ends_at(&self, index: &T) -> bool;
 }
